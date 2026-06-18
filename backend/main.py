@@ -1,7 +1,7 @@
 import os
 import secrets
 import hashlib
-from contextlib import asynccontextmanager, contextmanager
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Optional
@@ -9,7 +9,7 @@ from typing import Optional
 import psycopg2
 import psycopg2.extras
 from dotenv import load_dotenv
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Header, Query
+from fastapi import FastAPI, HTTPException, Request, UploadFile, File, Form, Header, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client
@@ -180,10 +180,14 @@ def _admin(authorization: Optional[str]) -> dict:
     return user
 
 
-def seed_data():
+def seed_categories():
     with get_db() as conn:
         for cat in ["Books", "Electronics", "Notes", "Clothing", "Other"]:
             conn.execute("INSERT INTO categories (name) VALUES (%s) ON CONFLICT (name) DO NOTHING", (cat,))
+
+
+def seed_admin():
+    with get_db() as conn:
         conn.execute(
             """INSERT INTO users (email, password_hash, name, username, role)
                VALUES (%s, %s, %s, %s, %s) ON CONFLICT (email) DO NOTHING""",
@@ -206,15 +210,22 @@ def _upload_to_storage(file_bytes: bytes, path: str, content_type: Optional[str]
 
 
 # ── App ────────────────────────────────────────────────────────────────────────
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    create_tables()
-    migrate_db()
-    seed_data()
-    yield
+# Vercel's Python serverless runtime doesn't run FastAPI's lifespan/startup events,
+# so DB setup runs lazily on first request instead, guarded by this flag.
+_initialized = False
 
 
-app = FastAPI(title="GIKI Bazaar API", lifespan=lifespan)
+def ensure_initialized():
+    global _initialized
+    if not _initialized:
+        create_tables()
+        migrate_db()
+        seed_categories()
+        seed_admin()
+        _initialized = True
+
+
+app = FastAPI(title="GIKI Bazaar API")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -222,6 +233,17 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def init_middleware(request: Request, call_next):
+    ensure_initialized()
+    return await call_next(request)
+
+
+@app.get("/")
+def root():
+    return {"status": "ok", "app": "GIKI Bazaar"}
 
 
 # ── Auth ───────────────────────────────────────────────────────────────────────
