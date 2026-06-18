@@ -17,11 +17,18 @@ from supabase import create_client
 load_dotenv()
 
 # ── Config ─────────────────────────────────────────────────────────────────────
-DATABASE_URL = os.environ["DATABASE_URL"]
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+DATABASE_URL = os.getenv("DATABASE_URL")
+SUPABASE_URL = os.getenv("SUPABASE_URL")
+SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 STORAGE_BUCKET = "listings"
 SESSION_DAYS = 7
+
+if not DATABASE_URL:
+    raise RuntimeError("DATABASE_URL not set")
+if not SUPABASE_URL:
+    raise RuntimeError("SUPABASE_URL not set")
+if not SUPABASE_KEY:
+    raise RuntimeError("SUPABASE_KEY not set")
 
 supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
 
