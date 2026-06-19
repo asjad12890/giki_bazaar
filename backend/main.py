@@ -14,6 +14,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from supabase import create_client
 
+print("main.py loaded successfully")
+
 load_dotenv()
 
 # ── Config ─────────────────────────────────────────────────────────────────────
