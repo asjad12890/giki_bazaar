@@ -23,14 +23,7 @@ SUPABASE_KEY = os.getenv("SUPABASE_KEY")
 STORAGE_BUCKET = "listings"
 SESSION_DAYS = 7
 
-if not DATABASE_URL:
-    raise RuntimeError("DATABASE_URL not set")
-if not SUPABASE_URL:
-    raise RuntimeError("SUPABASE_URL not set")
-if not SUPABASE_KEY:
-    raise RuntimeError("SUPABASE_KEY not set")
-
-supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+supabase = None
 
 
 # ── DB ─────────────────────────────────────────────────────────────────────────
@@ -216,8 +209,15 @@ _initialized = False
 
 
 def ensure_initialized():
-    global _initialized
+    global _initialized, supabase
     if not _initialized:
+        if not DATABASE_URL:
+            raise RuntimeError("DATABASE_URL not set")
+        if not SUPABASE_URL:
+            raise RuntimeError("SUPABASE_URL not set")
+        if not SUPABASE_KEY:
+            raise RuntimeError("SUPABASE_KEY not set")
+        supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
         create_tables()
         migrate_db()
         seed_categories()
